@@ -41,7 +41,9 @@
 %
 \documentclass[12pt]{iopart}
 \usepackage{graphicx}% Include figure files
-\usepackage{amsmath,siunitx}
+\usepackage{hyperref}% add hypertext capabilities
+
+\usepackage{siunitx}
 \usepackage{gensymb}
 \usepackage{subfigure}
 \usepackage{booktabs, multirow}
@@ -51,7 +53,7 @@
 %\usepackage{iopams}  
 \begin{document}
 
-\title{Algorithms for the restoration of non-complete-ring positron emission tomography (PET)}
+\title{Two-stage algorithms for the restoration of non-complete-ring PET Images}
 
 
 \author{Yeqi Fang$^1$ and Rong Zhou$^2$}
@@ -65,9 +67,10 @@
 \end{indented}
 
 \begin{abstract}
-	Positron Emission Tomography (PET) is a vital molecular imaging tool widely used in medical diagnosis and treatment evaluation. Traditional PET systems typically rely on complete detector rings to achieve full angular coverage for uniform and statistically robust sampling of coincidence events. However, incomplete-ring PET scanners have emerged in various scenarios due to hardware failures, cost constraints, or specific clinical needs. In such cases, conventional reconstruction algorithms often suffer from performance degradation due to reduced data completeness and geometric inconsistencies. This thesis proposes a coarse-to-fine reconstruction framework for incomplete-ring PET scanners. 
+	Positron Emission Tomography (PET) is a vital molecular imaging tool widely used in medicine. Traditional PET systems typically rely on complete detector rings to achieve full angular coverage for reliable data collection. However, incomplete-ring PET scanners have emerged in multiple contexts due to hardware failures, cost constraints, or specific clinical needs. Standard reconstruction algorithms often suffer from performance degradation with these systems because of reduced data completeness and geometric inconsistencies.
+  This thesis proposes a coarse-to-fine reconstruction framework for incomplete-ring PET scanners. 
   The framework employs a two-stage deep learning model to recover complete images from incomplete ones from incomplete PET detector systems.
-  We first use an Attention U-Net model to recover sinograms from incomplete ones, and then use the OSEM algorithm for preliminary reconstruction, and finally applies UNet-diffusion architecture for fine reconstruction. Our approach utilizes neighboring axial slices and spectral transform features as auxiliary guidance at the input level to ensure spatial and frequency domain consistency. 
+  We first use an Attention U-Net model to recover sinograms from incomplete ones, and then use the OSEM algorithm for preliminary reconstruction, and finally applies UNet-diffusion architecture for fine reconstruction. Our method employs neighboring axial slices and spectral transform features as auxiliary guidance at the input level to ensure spatial and frequency domain consistency. 
   Experimental results on public brain PET datasets demonstrate that the proposed method significantly outperforms existing approaches in metrics such as PSNR (35.6421 dB) and SSIM (0.9588), successfully preserving key anatomical structures and tracer distribution features, thus providing an effective solution for incomplete-ring PET imaging.
 \end{abstract}
 
@@ -83,13 +86,13 @@
 %\maketitle
 % 
 % For two-column output uncomment the next line and choose [10pt] rather than [12pt] in the \documentclass declaration
-%\ioptwocol
+% \ioptwocol
 %
 
 \section{Introduction}
 \label{chap:introduction}
 
-\subsection{Background and Motivation}
+% \subsection{Background and Motivation}
 
 Positron emission tomography (PET) is a powerful molecular imaging technique that provides quantitative visualization of metabolic processes within living tissue \cite{townsend2004}. The fundamental principle is elegant but complex: a radiotracer introduces positrons that annihilate upon encountering electrons, and then produce pairs of $511$keV photons traveling in opposing directions. 
 The photon pairs are then detected by a pair of scintillation sensors, and each coincidence event will define a line-of-response (LOR).
@@ -115,7 +118,7 @@ This study solves these problems by introducing a new coarse-to-fine model for b
 % Our method emphasizes restoring the missing angular information in the sinogram, effectively suppressing streak artifacts, and preserving the fine structural details critical for accurate clinical diagnosis.
 \begin{figure}[htbp]
 	\centering
-	\includegraphics[scale=0.47]{./Images/graph.jpg}
+	\includegraphics[scale=0.60]{./Images/graph.jpg}
 	\caption{Principles of Positron Emission Tomography (PET) imaging.}
 	\label{fig:graph}
 \end{figure}
@@ -385,11 +388,11 @@ After testing on our dataset, the results showed that Attention U-Net performs b
 % The network architecture adopts an improved U-Net model (see Table\ref{tab:unet_architecture}), with an encoder-decoder structure including convolution, pooling, upsampling, and skip connection modules. 
 % The encoder part uses $3\times3$ convolution kernels with batch normalization and ReLU activation functions, implementing feature dimensionality reduction through max pooling; the decoder uses transposed convolution/bilinear interpolation for resolution recovery, and shallow detail features are fused through skip connections. The bottleneck layer achieves high-level semantic representation through 1024-dimensional features.
 % The model structure is shown in 
-\begin{table}[htbp]
+\begin{table*}[htbp]
     \centering
     \caption{Five-channel U-Net network structure parameters}
     \label{tab:unet_architecture}
-    \begin{tabular}{@{}p{2.6cm}p{2.5cm}p{1.4cm}p{1.4cm}@{}}
+    \begin{tabular}{@{}p{4cm}p{4cm}p{3cm}p{3cm}@{}}
     \toprule
     \textbf{Description} & \textbf{Type} & \textbf{Kernel} & \textbf{Output} \\ \midrule
     Input & - & - & 5 \\
@@ -412,7 +415,7 @@ After testing on our dataset, the results showed that Attention U-Net performs b
     & Conv-BN-ReLU & & \\
     Output Layer & Conv & 1 $\times$ 1 & 5 \\ \bottomrule
     \end{tabular}
-\end{table}
+\end{table*}
 
 The model structure is shown in Tabel~\ref{tab:unet_architecture}.
 Model training uses the Adam optimizer with an initial learning rate of $10^{-4}$ and adds   $10^{-5}$ weight decay to prevent overfitting. 
@@ -654,7 +657,10 @@ Therefore,  for our current dataset size, convolutional architectures remains be
 \section{Acknowledgments}
 I would like to express my sincere gratitude to senior students from the School of Software, class of 2013: David Wang (the only name I know) and Duan Weigang, a senior student from the class of 2018, majoring in Nuclear Engineering and Nuclear Technology in the School of Physics. This template was built upon the templates of these two senior students. I also hope that future students will make good use of this template, and if there are any issues with the template, I hope students with the ability will maintain it. Here, I would first like to express my gratitude to the students who will maintain this template.
 
+\section*{References}
+
 \nocite{*}
+\bibliographystyle{unsrt}
 \bibliography{sinogram}
 
 
