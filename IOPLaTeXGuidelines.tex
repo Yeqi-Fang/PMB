@@ -67,11 +67,11 @@
 \end{indented}
 
 \begin{abstract}
-	Positron Emission Tomography (PET) is a vital molecular imaging tool widely used in medicine. Traditional PET systems typically rely on complete detector rings to achieve full angular coverage for reliable data collection. However, incomplete-ring PET scanners have emerged in multiple contexts due to hardware failures, cost constraints, or specific clinical needs. Standard reconstruction algorithms often suffer from performance degradation with these systems because of reduced data completeness and geometric inconsistencies.
-  This thesis proposes a coarse-to-fine reconstruction framework for incomplete-ring PET scanners. 
-  The framework employs a two-stage deep learning model to recover complete images from incomplete ones from incomplete PET detector systems.
-  We first use an Attention U-Net model to recover sinograms from incomplete ones, and then use the OSEM algorithm for preliminary reconstruction, and finally applies UNet-diffusion architecture for fine reconstruction. Our method employs neighboring axial slices and spectral transform features as auxiliary guidance at the input level to ensure spatial and frequency domain consistency. 
-  Experimental results on public brain PET datasets demonstrate that the proposed method significantly outperforms existing approaches in metrics such as PSNR (35.6421 dB) and SSIM (0.9588), successfully preserving key anatomical structures and tracer distribution features, thus providing an effective solution for incomplete-ring PET imaging.
+Positron Emission Tomography (PET) is a important molecular imaging tool widely used in medicine. Traditional PET systems  rely on complete detector rings for full angular coverage and reliable data collection. 
+However, incomplete-ring PET scanners have emerged in multiple contexts due to hardware failures, cost constraints, or specific clinical needs. Standard reconstruction algorithms often suffer from performance degradation with these systems because of reduced data completeness and geometric inconsistencies.
+The framework employs a two-stage deep learning model to recover complete images from incomplete ones from incomplete PET detector systems.
+We first use an Attention U-Net model to recover sinograms from incomplete ones, and then use the OSEM algorithm for preliminary reconstruction, and finally applies UNet-diffusion architecture for fine restoration. Our method also uses neighboring axial slices and spectral transforms as auxiliary guidance to improve consistency on spatial and frequency domain. 
+Our model is tested on public brain PET datasets, showing that the proposed method significantly outperforms existing approaches in metrics such as PSNR (35.6421 dB) and SSIM (0.9588), successfully preserving key anatomical structures and tracer distribution features, thus providing an effective solution for incomplete-ring PET imaging.
 \end{abstract}
 
 %
@@ -118,8 +118,8 @@ This study solves these problems by introducing a new coarse-to-fine model for b
 % Our method emphasizes restoring the missing angular information in the sinogram, effectively suppressing streak artifacts, and preserving the fine structural details critical for accurate clinical diagnosis.
 \begin{figure}[htbp]
 	\centering
-	\includegraphics[scale=0.60]{./Images/graph.jpg}
-	\caption{Principles of Positron Emission Tomography (PET) imaging.}
+	\includegraphics[scale=0.70]{./Images/graph.jpg}
+	\caption{Principles of Positron Emission Tomography (PET) imaging \cite{Neumaier}.}
 	\label{fig:graph}
 \end{figure}
 
@@ -171,10 +171,10 @@ The remainder of this thesis is organized as follows:
 \begin{figure*}[htbp]
     \centering
     \vspace{-0.2cm}
-    \includegraphics[width=0.24\textwidth]{Images/Thehumanbrainismissing5}
-    \includegraphics[width=0.24\textwidth]{Images/Thehumanbrainismissing4}
-    \includegraphics[width=0.24\textwidth]{Images/Thehumanbrainisnotmissing3}
-    \includegraphics[width=0.24\textwidth]{Images/Thehumanbrainisnotmissing4}
+    \includegraphics[width=0.34\textwidth]{Images/Thehumanbrainismissing5}
+    \includegraphics[width=0.34\textwidth]{Images/Thehumanbrainismissing4}
+    \includegraphics[width=0.34\textwidth]{Images/Thehumanbrainisnotmissing3}
+    \includegraphics[width=0.34\textwidth]{Images/Thehumanbrainisnotmissing4}
     \vspace{-0.2cm}
     \caption{Three-dimensional schematic of incomplete and complete ring PET scanner detector structure, with the right image showing a perspective view.}
     \vspace{-0.2cm}
@@ -531,8 +531,12 @@ Training efficiency is enhanced through mixed precision computation and gradient
 
 % This coarse-to-fine framework effectively balances reconstruction quality with computational efficiency, providing a practical solution for incomplete ring PET imaging in clinical settings.
 
-
-
+\subsection{Image Refinement Based on U-Net and Diffusion Model}
+\label{sec:diffusion_model}
+Then, to further improve the image quality in geometry space, we have the second stage of our framework, which is a dual-model architecture that combines U-Net and diffusion model. The U-Net model is used to generate a coarse prediction of the image, while the diffusion model is used to refine the image by reconstructing the residual signal. This two-stage approach effectively balances reconstruction quality with computational efficiency.
+And they also use an auxiliary guidance strategy and a contrastive diffusion strategy to improve the reconstruction quality. The auxiliary guidance strategy uses neighboring axial slices and spectral information to provide additional context for the reconstruction, while the contrastive diffusion strategy ensures that the model produces anatomically plausible reconstructions specific to each individual scan. 
+Here we adopt almost the same architecture as that used in Ref. \cite{han2023} except some tweaks of the hyperparameters for the training
+And we train the model using a combination of L1 loss and contrastive loss without pretrained weights. 
 
 \subsection{Evaluation Metrics}
 
@@ -549,16 +553,16 @@ where $\text{MAX}_I$ represents the maximum possible pixel value of the image; f
 \text{MSE} = \frac{1}{mn}\sum_{i=0}^{m-1}\sum_{j=0}^{n-1}[I(i,j) - K(i,j)]^2,
 \end{equation}
 where $I$ and $K$ are the original and reconstructed images respectively, and $m$ and $n$ are the image dimensions. For three-dimensional PET image voxels, the MSE calculation extends to three dimensions.
-
-PSNR values are typically expressed in decibels (dB), with higher values indicating better reconstruction quality. In this study, PSNR values above 30dB typically indicate high-quality reconstruction, and our method achieved an average PSNR of 35.6421dB in high angular loss regions (30°-60°), significantly outperforming traditional methods.
+PSNR values are typically expressed in decibels (dB), with higher values indicating better reconstruction quality. In this study, PSNR values above 30dB typically indicate high-quality reconstruction
+% , and our method achieved an average PSNR of 35.6421dB in high angular loss regions (30°-60°), significantly outperforming traditional methods.
 
 \textbf{Structural Similarity Index (SSIM)}: Although PSNR is intuitive, it cannot adequately reflect the human visual system's perception of structural information. SSIM addresses this deficiency by evaluating similarity in terms of brightness, contrast, and structure to more comprehensively assess image quality \cite{Wang2004SSIM}:
 \begin{equation}
 \text{SSIM}(x, y) = \frac{(2\mu_x\mu_y + c_1)(2\sigma_{xy} + c_2)}{(\mu_x^2 + \mu_y^2 + c_1)(\sigma_x^2 + \sigma_y^2 + c_2)},
 \end{equation}
 where $\mu_x$ and $\mu_y$ are the averages of images $x$ and $y$ respectively; $\sigma_x^2$ and $\sigma_y^2$ are their variances; $\sigma_{xy}$ is their covariance; and $c_1$ and $c_2$ are small constants set to avoid division by zero.
-
-SSIM values range between [-1,1], with 1 indicating that two images are identical. In medical image reconstruction, SSIM is particularly important because it better reflects the preservation of diagnostically relevant structures. Our method achieved an average SSIM of 0.9588 on the validation set, indicating that the reconstructed images successfully preserved key structural features of the original PET images.
+SSIM values range between [-1,1], with 1 indicating that two images are identical. In medical image reconstruction, SSIM is particularly important because it better reflects the preservation of diagnostically relevant structures. 
+% Our method achieved an average SSIM of 0.9588 on the validation set, indicating that the reconstructed images successfully preserved key structural features of the original PET images.
 
 \textbf{Normalized Mean Square Error (NMSE)} normalizes the image error with respect to the energy of the original image \cite{Higashiyama2024NMSE}:
 \begin{equation}
@@ -575,7 +579,40 @@ where $X$ and $\hat{X}$ are the original and reconstructed images respectively. 
 \label{chap:results}
 
 Figure~\ref{fig:pet_incomplete_reconstruction} shows the comparison between directly reconstructed results without any correction and the original image. As can be seen, due to incomplete sampling caused by data loss, there are significant differences between the directly reconstructed image and the original image. These phenomena indicate that traditional PET reconstruction methods face difficulties when applied to incomplete ring PET geometries, necessitating new methods to address the data loss problem.
-
+\begin{table}[htbp]
+    \centering
+    \caption{PET Scanner Configuration Parameters}
+    \label{tab:results}
+    \begin{tabular}{ll ll}
+    \toprule
+    \textbf{Loss type}&\textbf{Parameter} & \textbf{Mean}&\textbf{Std}\\
+    \midrule
+    \multirow{6}{*}{[30\degree, 90\degree] \& [210\degree, 270\degree]}
+    &SSIM (refined)& 0.9621 &0.01251\\
+    &PSNR (refined)& 30.36 dB&2.318 dB\\
+    &SSIM& 0.9503 &0.01480\\
+    &PSNR& 29.12 dB&2.650 dB\\
+    &SSIM (sinogram)& 0.9597&0.001553\\
+    &PSNR (sinogram)& 35.78 dB&0.3045 dB\\
+    \midrule
+    \multirow{6}{*}{\parbox{4.8cm}{[60\degree, 90\degree] \& [130\degree, 160\degree] \& [240\degree, 260\degree] \& [320\degree, 340\degree]}}
+    &SSIM (refined)& 0.9708 &0.01128\\
+    &PSNR (refined)& 30.92 dB&2.521 dB\\
+    &SSIM& 0.9661&0.01330\\
+    &PSNR& 30.10 dB&2.810 dB\\
+    &SSIM (sinogram)& 0.9679&0.001341\\
+    &PSNR (sinogram)& 38.4107 dB&0.2695 dB\\
+    \midrule
+    \multirow{4}{*}{[60\degree, 120\degree] \& [240\degree, 300\degree]}
+    &SSIM (refined)& 0.9624 &0.01275\\
+    &PSNR (refined)& 29.97 dB&2.274 dB\\
+    &SSIM& 0.9509&0.0163\\
+    &PSNR& 28.91 dB&2.512 dB\\
+    &SSIM (sinogram)& 0.9630&0.001632\\
+    &PSNR (sinogram)& 35.91 dB&0.2762 dB\\
+    \bottomrule
+    \end{tabular}
+\end{table}
 Figure\ref{fig:pet_reconstruction_results} demonstrates the model's capability in reconstructing incomplete sinograms. After 30 rounds of training, the model can effectively recover complete sinogram structures from inputs with missing angular data. From the figure, it can be observed that although the input sinogram (left) has large-scale data loss, the model's predicted sinogram (middle) successfully restores a structure and signal distribution highly similar to the real sinogram (right). This indicates that our proposed coarse-to-fine diffusion model framework can effectively learn the potential structures and features in sinograms, enabling accurate reconstruction even in cases of severe data loss.
 
 \begin{figure*}[ht]
@@ -587,15 +624,15 @@ Figure\ref{fig:pet_reconstruction_results} demonstrates the model's capability i
 \end{figure*}
 Figure\ref{fig:pet_brain_reconstruction} shows the final PET image quality generated from the reconstructed sinogram. Its PSNR reached 30.5468 and SSIM was 0.805. By comparing the original PET brain image (left) with the reconstructed PET image (right), it can be seen that the reconstructed image successfully preserves key anatomical structures and tracer distribution features from the original image. Particularly in the cerebral cortex and basal ganglia regions, the reconstructed image clearly preserves the boundaries and contrast of high uptake areas. Notably, the signal intensity in the reconstructed image is slightly enhanced (maximum value increased from 0.07 to 0.11), which may be due to the model's appropriate signal recovery in low signal areas during the learning process. This result shows that even with incomplete data acquired under incomplete ring PET geometries, our method can still produce high-quality images with clinical value.
 
-\begin{figure*}[ht]
+\begin{figure}[ht]
     \centering
-    \includegraphics[width=\textwidth]{Images/compare_reconstruction_restoration}
+    \includegraphics[width=\textwidth]{Images/compare_reconstruction_restoration2}
     \vspace{-1cm}
     \caption{Comparison of original PET brain image (left) with PET image reconstructed from predicted sinogram (right), both showing the 64th layer slice. The reconstructed image preserves key anatomical structures and tracer distribution features from the original image, illustrating the capacity to restore complete images from incomplete ring PET geometries. 
     % The color bar indicates tracer concentration, with the higher maximum value (0.11) in the right reconstructed image compared to the original image (0.07) possibly indicating signal intensity changes during the reconstruction process.
     }
     \label{fig:pet_brain_reconstruction}
-\end{figure*}
+\end{figure}
 
 % Figure\ref{fig:training_validation_loss} shows the trend of loss function changes during the model training process. Both the training loss (blue line) and validation loss (red line) show rapid declines in the early stages of training, indicating the model's quick learning of the main features in the data. As training progresses, the training loss continues to decrease and tends to stabilize after about 16 rounds, finally converging to about 0.1; while the validation loss quickly flattens after the first few rounds, maintaining at a level of about 0.2. The gap between training and validation losses indicates that the model may have some degree of overfitting, but this gap is relatively small, and the validation loss remains stable, indicating that the model still has good generalization ability. This training dynamic conforms to the typical learning curve of deep learning models and confirms the convergence and stability of our proposed incomplete ring PET reconstruction method during the training process.
 
@@ -613,7 +650,14 @@ Combining the above results, our experiments prove the effectiveness of the prop
 \label{chap:conclusion}
 
 % This thesis proposes an innovative coarse-to-fine diffusion-based reconstruction framework specifically for incomplete ring PET imaging. In terms of technical innovation, we designed a two-stage architecture consisting of a Coarse Prediction Module (CPM) and an Iterative Refinement Module (IRM), effectively solving the reconstruction problem by separating initial estimation and residual correction; we introduced an auxiliary guidance strategy incorporating adjacent axial slices and frequency domain features in the input space, injecting valuable spatial and frequency priors; we innovatively integrated contrastive learning objectives into the diffusion process in the output space, enhancing the correspondence between input and ground truth output. Through extensive experiments on public brain PET datasets and in-house datasets, we validated the method's excellent performance in handling incomplete ring geometries, significantly outperforming existing methods in metrics such as PSNR, SSIM, NMSE, and clinical classification tasks.
-
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\textwidth]{Images/target_outputs.pdf}
+    \vspace{-1cm}
+    \caption{Comparison of original PET brain image (top) with PET image refined from the raw images reconstructed from predicted sinogram (bottom).
+    }
+    \label{fig:compare_reconstruction_restoration}
+\end{figure}
 
 % In response to these limitations, future research could explore several directions: investigating techniques such as adaptive diffusion steps or learned solvers to further enhance IRM performance; directly integrating clinical tasks such as lesion detection or SUV quantification into the training objectives; validating in physical incomplete ring scanners or actual hardware failure scenarios to deeply assess the method's practical application robustness; meanwhile, if anatomical modality data could be obtained, combining MR or CT guidance might further improve the ill-posed problem of incomplete PET coverage. Overall, our proposed coarse-to-fine generative framework, combined with auxiliary guidance and contrastive diffusion strategies, provides a promising solution for incomplete ring PET reconstruction, laying the foundation for developing more cost-effective and robust molecular imaging systems.
 
@@ -655,7 +699,7 @@ Therefore,  for our current dataset size, convolutional architectures remains be
 
 %!TEX root = ../Manual.tex
 \section{Acknowledgments}
-I would like to express my sincere gratitude to senior students from the School of Software, class of 2013: David Wang (the only name I know) and Duan Weigang, a senior student from the class of 2018, majoring in Nuclear Engineering and Nuclear Technology in the School of Physics. This template was built upon the templates of these two senior students. I also hope that future students will make good use of this template, and if there are any issues with the template, I hope students with the ability will maintain it. Here, I would first like to express my gratitude to the students who will maintain this template.
+I would like to express my sincere gratitude to senior students, Xiaoyu Chen for insightful discussions and suggestions.
 
 \section*{References}
 
