@@ -6,3 +6,11 @@
 /IOPLaTeXGuidelines.out
 /IOPLaTeXGuidelines.pdf
 /IOPLaTeXGuidelines.synctex.gz
+sinogram.synctex.gz
+sinogram.aux
+sinogram.bbl
+sinogram.blg
+sinogram.log
+sinogram.out
+.gitignore
+sinogram.pdf

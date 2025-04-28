@@ -71,7 +71,7 @@ Positron Emission Tomography (PET) is a important molecular imaging tool widely 
 However, incomplete-ring PET scanners have emerged in multiple contexts due to hardware failures, cost constraints, or specific clinical needs. Standard reconstruction algorithms often suffer from performance degradation with these systems because of reduced data completeness and geometric inconsistencies.
 The framework employs a two-stage deep learning model to recover complete images from incomplete ones from incomplete PET detector systems.
 We first use an Attention U-Net model to recover sinograms from incomplete ones, and then use the OSEM algorithm for preliminary reconstruction, and finally applies UNet-diffusion architecture for fine restoration. Our method also uses neighboring axial slices and spectral transforms as auxiliary guidance to improve consistency on spatial and frequency domain. 
-Our model is tested on public brain PET datasets, showing that the proposed method significantly outperforms existing approaches in metrics such as PSNR (35.6421 dB) and SSIM (0.9588), successfully preserving key anatomical structures and tracer distribution features, thus providing an effective solution for incomplete-ring PET imaging.
+Our model is tested on public brain PET datasets, showing that the proposed method significantly outperforms existing approaches in metrics such as PSNR (30.92 dB) and SSIM (0.9708), successfully preserving key anatomical structures and tracer distribution features, thus providing an effective solution for incomplete-ring PET imaging.
 \end{abstract}
 
 %
@@ -114,7 +114,7 @@ Methods based on explicit likelihood modeling—like VAEs and flow-based approac
 Model-based deep learning frameworks and generative models \cite{reader2023, vashistha2024} show promise but risk introducing hallucinated features—a dangerous proposition in medical imaging.
 
 The core challenge is the fundamental \textbf{information loss}, which can not be solved, only mitigation. Analytical methods collapse under data deficiency, over-regularized iterative methods blur subtle features, and deep learning models risk introducing misleading artifacts. Current approaches fail in at least one critical dimension—they can't handle severe data loss, require unrealistic computational resources, or compromise the detailed features that clinicians depend on for diagnosis. 
-This study solves these problems by introducing a new coarse-to-fine model for both sinogram and its reconstruction which can preserve details useful for accurate clinical diagnosis.
+This study solves these problems by introducing a new two-stage model for both sinogram and its reconstruction which can preserve details useful for accurate clinical diagnosis.
 % Our method emphasizes restoring the missing angular information in the sinogram, effectively suppressing streak artifacts, and preserving the fine structural details critical for accurate clinical diagnosis.
 \begin{figure}[htbp]
 	\centering
@@ -126,7 +126,7 @@ This study solves these problems by introducing a new coarse-to-fine model for b
 % \subsection{Thesis Organization}
 The remainder of this thesis is organized as follows:
 \textbf{Section \ref{chap:background}} (\emph{Background on PET Imaging and Incomplete Ring Geometry}) provides an overview of PET and its basic physics like principles of coincidence detection, and the main problems caused by incomplete rings. We also summarize classical and modern reconstruction methods.
-\textbf{Section \ref{chap:methods}} (\emph{Fundamentals of Diffusion Probabilistic Models}) details the background of Denoising Diffusion Probabilistic Models (DDPM) and how they apply to various image reconstruction tasks, establishing the theoretical foundation for our proposed method. \emph{Proposed Coarse-to-Fine Reconstruction Framework}) describes the detailed workflow of our method, including complete and incomplete ring geometric modeling, creation of list-mode and sinogram data, the coarse-to-fine design, auxiliary guidance modules, contrastive diffusion learning objectives, and implementation details.
+\textbf{Section \ref{chap:methods}} (\emph{Fundamentals of Diffusion Probabilistic Models}) details the background of Denoising Diffusion Probabilistic Models (DDPM) and how they apply to various image reconstruction tasks, establishing the theoretical foundation for our proposed method. \emph{Proposed two-stage Restoration Framework}) describes the detailed workflow of our method, including complete and incomplete ring geometric modeling, creation of list-mode and sinogram data, the two-stage design, auxiliary guidance modules, contrastive diffusion learning objectives, and implementation details.
 \textbf{Section \ref{chap:results}} (\emph{Experiments and Results}) presents our experimental setups including the restoration of both sinogram and its reconstruction. We also include hyperparameter choices, metrics to assess the performance of our model, and comparisons with other excellent methods. 
 \textbf{Section \ref{chap:conclusion}} (\emph{Summary and Prospective}) summarizes our findings by analysing metrices of model performance on test dataset, and discusses limitations and directions for future improvements.
 \textbf{Appendices} provide additional experiments, extended qualitative results, and tables of hyperparameters used in the study.
@@ -349,7 +349,7 @@ As shown in Figure \ref{fig:reconstruction_workflow}, this study proposes an inn
 Sinogram repair is very important in incomplete ring PET imaging, as its quality directly affects the precision of reconstructed images. 
 The shape of sinogram tensors is $(D, 2D+1, R^2)$, or $(182, 365, 1764)$ in our work, where $R$ is the number of axial rings and $D$ is the number of detectors each ring. And it is obvious that this tensor is too large to be directly fed into any UNet-like models. So we cut this large $(D, 2D+1, R^2)$ tensor into $R\times(D, 2D+1, R)$ tensors. 
 As shown in Figure~\ref{fig:sinogram_structure}, the central channel of each input tensor corresponds to the current sinogram slice, while the direct spatial neighbors (slices $j-1$ and $j+1$) and temporal neighbors from previous and subsequent sinogram periods (slices $j-R$ and $j+R$) constitute the other four channels. For boundary handling, when adjacent indices exceed the dataset range, the central slice itself is used for channel filling, ensuring input dimension consistency. These neighboring slices are important for improving the model's understanding of local structural continuity and temporal consistency. So finally we have $1764\times(182, 365, 5)$ tensors for each sinogram. 
-To make sure each image was evaluated once in the test set, we implemented 6-fold cross-validation across the 206 volumes (4 groups with 34 images and 2 groups with 35 images). The predictions obtained from our model were reconstructed using the OSEM algorithm to achieve preliminary geometric recovery, and these reconstructions were subsequently used as inputs for our the coarse-to-fine framework.
+To make sure each image was evaluated once in the test set, we implemented 6-fold cross-validation across the 206 volumes (4 groups with 34 images and 2 groups with 35 images). The predictions obtained from our model were reconstructed using the OSEM algorithm to achieve preliminary geometric recovery, and these reconstructions were subsequently used as inputs for our second stage framework.
 
 Although traditional U-Net performs excellently in medical image segmentation and reconstruction tasks \cite{ronneberger2015unetconvolutionalnetworksbiomedical}, it lacks the ability to selectively focus on key features when dealing with complex incomplete ring PET sinogram restoration problems. The Attention U-Net \cite{oktay2018attentionunetlearninglook} adopted in this study enhances the model's perception of important feature regions through spatial attention mechanisms while suppressing the influence of irrelevant features, which is more useful for restoring sinograms from incomplete data. We also tested some transformer-based U-Net like UNETR \cite{hatamizadeh2021unetrtransformers3dmedical}, which combines ViT encoder and convolutional decoder, and TransUNet \cite{chen2021transunettransformersmakestrong}, where both encoder and decoder are completely based on transformers. But they are slightly outperformed by Attention U-Net.
 
@@ -365,9 +365,7 @@ After processing through the attention gate, the features can be represented as:
 \end{equation}
 
 The Attention gates learn to focus on relevant regions of the encoder feature maps by assigning weights based on the context, particularly in cases of severe angular loss. AGs can create a stronger understanding of sinogram continuity and consistency.
-
 % In the experimental implementation, we integrated AG modules into the skip connection path at each decoding stage, using $1\times1$ convolution to reduce channel dimensions, followed by applying attention coefficients for feature selection. This design enables the model to more precisely restore missing data when processing incomplete sinograms containing large-scale angular losses, while maintaining overall structural consistency and accurate signal distribution.
-
 After testing on our dataset, the results showed that Attention U-Net performs better with an average increase of 1.24dB in PSNR and 0.052 in SSIM compared to original U-Net in sinogram reconstruction tasks. This means that attention mechanism is more effective in processing incomplete ring PET data.
 
 
@@ -575,8 +573,10 @@ where $X$ and $\hat{X}$ are the original and reconstructed images respectively. 
 
 %!TEX root = ../Manual.tex
 \section{Experimental Results}
-
 \label{chap:results}
+In order to investigate the effect of the form of loss on the reconstruction results while ensuring that the total amount of data loss remained constant, we varied the range of angles at which the data were missing and ensured that the total range of missing angles remained constant and repeated the experimental procedure. The results on validation set are listed in Table~\ref{tab:results}. 
+The table includes PSNR and SSIM values of the recovered sinogram data by the first stage attention U-Net, the reconstruction from these sinogram, and the refined images from the reconstruction using the second stage model. The results indicate that our method achieves high-quality reconstruction performance, with PSNR values exceeding 30 dB and SSIM values above 0.95 for most cases. 
+% This demonstrates the effectiveness of our approach in restoring missing data and improving image quality.
 
 Figure~\ref{fig:pet_incomplete_reconstruction} shows the comparison between directly reconstructed results without any correction and the original image. As can be seen, due to incomplete sampling caused by data loss, there are significant differences between the directly reconstructed image and the original image. These phenomena indicate that traditional PET reconstruction methods face difficulties when applied to incomplete ring PET geometries, necessitating new methods to address the data loss problem.
 \begin{table}[htbp]
@@ -585,7 +585,7 @@ Figure~\ref{fig:pet_incomplete_reconstruction} shows the comparison between dire
     \label{tab:results}
     \begin{tabular}{ll ll}
     \toprule
-    \textbf{Loss type}&\textbf{Parameter} & \textbf{Mean}&\textbf{Std}\\
+    \textbf{Lost angle range}&\textbf{Parameter} & \textbf{Mean}&\textbf{Std}\\
     \midrule
     \multirow{6}{*}{[30\degree, 90\degree] \& [210\degree, 270\degree]}
     &SSIM (refined)& 0.9621 &0.01251\\
@@ -595,6 +595,14 @@ Figure~\ref{fig:pet_incomplete_reconstruction} shows the comparison between dire
     &SSIM (sinogram)& 0.9597&0.001553\\
     &PSNR (sinogram)& 35.78 dB&0.3045 dB\\
     \midrule
+    \multirow{6}{*}{[60\degree, 120\degree] \& [240\degree, 300\degree]}
+    &SSIM (refined)& 0.9624 &0.01275\\
+    &PSNR (refined)& 29.97 dB&2.274 dB\\
+    &SSIM& 0.9509&0.0163\\
+    &PSNR& 28.91 dB&2.512 dB\\
+    &SSIM (sinogram)& 0.9630&0.001632\\
+    &PSNR (sinogram)& 35.91 dB&0.2762 dB\\
+    \midrule
     \multirow{6}{*}{\parbox{4.8cm}{[60\degree, 90\degree] \& [130\degree, 160\degree] \& [240\degree, 260\degree] \& [320\degree, 340\degree]}}
     &SSIM (refined)& 0.9708 &0.01128\\
     &PSNR (refined)& 30.92 dB&2.521 dB\\
@@ -602,33 +610,26 @@ Figure~\ref{fig:pet_incomplete_reconstruction} shows the comparison between dire
     &PSNR& 30.10 dB&2.810 dB\\
     &SSIM (sinogram)& 0.9679&0.001341\\
     &PSNR (sinogram)& 38.4107 dB&0.2695 dB\\
-    \midrule
-    \multirow{4}{*}{[60\degree, 120\degree] \& [240\degree, 300\degree]}
-    &SSIM (refined)& 0.9624 &0.01275\\
-    &PSNR (refined)& 29.97 dB&2.274 dB\\
-    &SSIM& 0.9509&0.0163\\
-    &PSNR& 28.91 dB&2.512 dB\\
-    &SSIM (sinogram)& 0.9630&0.001632\\
-    &PSNR (sinogram)& 35.91 dB&0.2762 dB\\
     \bottomrule
     \end{tabular}
 \end{table}
-Figure\ref{fig:pet_reconstruction_results} demonstrates the model's capability in reconstructing incomplete sinograms. After 30 rounds of training, the model can effectively recover complete sinogram structures from inputs with missing angular data. From the figure, it can be observed that although the input sinogram (left) has large-scale data loss, the model's predicted sinogram (middle) successfully restores a structure and signal distribution highly similar to the real sinogram (right). This indicates that our proposed coarse-to-fine diffusion model framework can effectively learn the potential structures and features in sinograms, enabling accurate reconstruction even in cases of severe data loss.
+Figure~\ref{fig:pet_reconstruction_results} demonstrates the model's capability in reconstructing incomplete sinograms. After 40 rounds of training, the model can effectively recover complete sinogram structures from inputs with missing angular data. From the figure, it can be observed that although the input sinogram (left) has large-scale data loss, the model's predicted sinogram (middle) successfully restores a structure and signal distribution highly similar to the real sinogram (right). This indicates that our proposed two-stage restoration framework can effectively learn the potential structures and features in sinograms, enabling accurate reconstruction even in cases of severe data loss.
 
 \begin{figure*}[ht]
     \centering
-    \includegraphics[width=\textwidth]{Images/epoch_030.pdf}
+    \includegraphics[width=\textwidth]{Images/sinograms.pdf}
     \vspace{-1cm}
-    \caption{Comparison of PET sinogram reconstruction results after 30 rounds of training (validation loss: 0.157624). Each row displays three images: the left shows the incomplete input sinogram with missing angular data, the middle shows the model-predicted complete sinogram, and the right shows the complete real sinogram. The color bar indicates signal intensity. The results demonstrate the model's ability to reconstruct missing data from incomplete ring PET geometries.}
+    \caption{Comparison of PET sinogram reconstruction results after training (metrics are shown in Tabel~\ref{tab:results}). Each row displays three images: the left shows the incomplete input sinogram with missing angular data, the middle shows the model-predicted complete sinogram, and the right shows the complete real sinogram. And each row corresponds to a different angular loss range, as indicated in the first column. }
     \label{fig:pet_reconstruction_results}
 \end{figure*}
-Figure\ref{fig:pet_brain_reconstruction} shows the final PET image quality generated from the reconstructed sinogram. Its PSNR reached 30.5468 and SSIM was 0.805. By comparing the original PET brain image (left) with the reconstructed PET image (right), it can be seen that the reconstructed image successfully preserves key anatomical structures and tracer distribution features from the original image. Particularly in the cerebral cortex and basal ganglia regions, the reconstructed image clearly preserves the boundaries and contrast of high uptake areas. Notably, the signal intensity in the reconstructed image is slightly enhanced (maximum value increased from 0.07 to 0.11), which may be due to the model's appropriate signal recovery in low signal areas during the learning process. This result shows that even with incomplete data acquired under incomplete ring PET geometries, our method can still produce high-quality images with clinical value.
+Figure~\ref{fig:pet_brain_reconstruction} shows the final PET image quality generated from the reconstructed sinogram. Its PSNR reached 30.5468 and SSIM was 0.805. By comparing the original PET brain image (left) with the reconstructed PET image (right), it can be seen that the reconstructed image successfully preserves key anatomical structures and tracer distribution features from the original image. Particularly in the cerebral cortex and basal ganglia regions, the reconstructed image clearly preserves the boundaries and contrast of high uptake areas. Notably, the signal intensity in the reconstructed image is slightly enhanced (maximum value increased from 0.07 to 0.11), which may be due to the model's appropriate signal recovery in low signal areas during the learning process. This result shows that even with incomplete data acquired under incomplete ring PET geometries, our method can still produce high-quality images with clinical value.
 
 \begin{figure}[ht]
     \centering
     \includegraphics[width=\textwidth]{Images/compare_reconstruction_restoration2}
     \vspace{-1cm}
-    \caption{Comparison of original PET brain image (left) with PET image reconstructed from predicted sinogram (right), both showing the 64th layer slice. The reconstructed image preserves key anatomical structures and tracer distribution features from the original image, illustrating the capacity to restore complete images from incomplete ring PET geometries. 
+    \caption{Comparison of original PET brain image (left) with PET image reconstructed from predicted sinogram (right), both showing the 64th layer slice with SSIM of 0.9503 and PSNR of 29.12 dB. The lost angle range is [30\degree, 90\degree] and [210\degree, 270\degree]. 
+    % The reconstructed image preserves key anatomical structures and tracer distribution features from the original image, illustrating the capacity to restore complete images from incomplete ring PET geometries. 
     % The color bar indicates tracer concentration, with the higher maximum value (0.11) in the right reconstructed image compared to the original image (0.07) possibly indicating signal intensity changes during the reconstruction process.
     }
     \label{fig:pet_brain_reconstruction}
@@ -642,11 +643,11 @@ Figure\ref{fig:pet_brain_reconstruction} shows the final PET image quality gener
 %     \caption{Change in loss function during the training process of the incomplete ring PET reconstruction model. The figure shows the trends of training loss (blue line) and validation loss (red line) over training rounds, using logarithmic scale Mean Absolute Error (MAE) as the evaluation metric. In the early stages of training, both loss curves show rapid declines, after which the training loss continues to decrease and tends to stabilize after about 16 rounds, finally converging to about 0.1; while the validation loss quickly flattens after the first few rounds, maintaining at a level of about 0.2. The gap between training and validation losses indicates that the model may have some degree of overfitting.}
 %     \label{fig:training_validation_loss}
 % \end{figure*}
-Combining the above results, our experiments prove the effectiveness of the proposed coarse-to-fine diffusion model framework in incomplete ring PET reconstruction tasks. This method not only can recover high-quality sinograms from severely incomplete data but also generate final PET images that preserve key clinical features, providing important support for the practical application of incomplete ring PET imaging technology.
+% Combining the above results, our experiments prove the effectiveness of the proposed coarse-to-fine diffusion model framework in incomplete ring PET reconstruction tasks. This method not only can recover high-quality sinograms from severely incomplete data but also generate final PET images that preserve key clinical features, providing important support for the practical application of incomplete ring PET imaging technology.
 
 
 %!TEX root = ../Manual.tex
-\section{Conclusion}
+\section{Conclusion and Discussion}
 \label{chap:conclusion}
 
 % This thesis proposes an innovative coarse-to-fine diffusion-based reconstruction framework specifically for incomplete ring PET imaging. In terms of technical innovation, we designed a two-stage architecture consisting of a Coarse Prediction Module (CPM) and an Iterative Refinement Module (IRM), effectively solving the reconstruction problem by separating initial estimation and residual correction; we introduced an auxiliary guidance strategy incorporating adjacent axial slices and frequency domain features in the input space, injecting valuable spatial and frequency priors; we innovatively integrated contrastive learning objectives into the diffusion process in the output space, enhancing the correspondence between input and ground truth output. Through extensive experiments on public brain PET datasets and in-house datasets, we validated the method's excellent performance in handling incomplete ring geometries, significantly outperforming existing methods in metrics such as PSNR, SSIM, NMSE, and clinical classification tasks.
@@ -654,7 +655,7 @@ Combining the above results, our experiments prove the effectiveness of the prop
     \centering
     \includegraphics[width=\textwidth]{Images/target_outputs.pdf}
     \vspace{-1cm}
-    \caption{Comparison of original PET brain image (top) with PET image refined from the raw images reconstructed from predicted sinogram (bottom).
+    \caption{Comparison of original PET brain image (top) with PET image refined from the raw images reconstructed from predicted sinogram (bottom) with the SSIM of 0.9621 and PSNR of 30.36 dB. The lost angle range is [30\degree, 90\degree] and [210\degree, 270\degree]. The axial slices should be $128\times128$, but we only show the central $128\times80$ part. 
     }
     \label{fig:compare_reconstruction_restoration}
 \end{figure}
@@ -665,11 +666,17 @@ Combining the above results, our experiments prove the effectiveness of the prop
 % \section{discusses}
 
 From the experimental results, we can  confirm that our two-stage reconstruction can effectively recover  PET images from incomplete ring geometries. And we also have several important findings. 
-First, our model performs remarkably well despite operating with approximately 50\% missing data, in which case direct reconstruction without restoration will cause a chaos. When we removed detectors with angles between [30, 90] and [210, 270], we retained only about 54.6\% of the originally detected events. This significant loss is a really challenging reconstruction situation, but our approach was still able to achieve PSNR values above 35 dB and SSIM scores above 0.95, indicating successful ability to recover missing infomation of key structural features.
+First, our model performs remarkably well despite operating with approximately 50\% missing data and $1/3$ missing detectors, in which case direct reconstruction without restoration will cause a chaos. 
+But our approach was still able to achieve PSNR values above 35 dB and SSIM scores above 0.95, indicating successful ability to recover missing infomation of key structural features.
 
 % And the form of data loss will also affect the reconstruction quality. Unlike randomly distributed missing data, our situation includes  contiguous angular segments that are completely absent. This continuous loss pattern creates systematic artifacts that are more difficult to correct than scattered missing values . Additionally, since the missing data is concentrated in specific angular regions, the upper portion of the sinogram has only a narrow band of non-missing data, creating an imbalanced reconstruction problem. The model must extrapolate missing regions based on limited available data, which increases the reconstruction difficulty significantly.
-While the total amount of missing data remains constant, the specific distribution of the missing affects the quality of the recovery. The model extrapolates the missing parts with the help of existing data, and when the sinogram contains an entire missing region, the model will infer the missing parts from farther away, which will lead to a decrease in the quality of recovery. However, when the missing and intact parts are interleaved, the quality of recovery improves because the model is able to extrapolate from a closer location. In addition, if the missing parts are close to the middle of the sinogram, the model is able to obtain the existing data from the upper and lower parts in a balanced way for inference, but when the missing parts are close to the upper part of the sinogram, the existing data from the upper part has only a narrow band, and the model obtains only limited data from the upper part, which leads to poorer recovery of the upper part.
-However, theoretically, due to the rotational symmetry of PET scanners, just a angular shift of missing angles without changing the structure should be equivalent. The performance discrepancy likely stems from our algorithm not fully accounting for the periodic boundary conditions of sinograms. Future implementations could address this by either centralizing the missing segments or explicitly modeling the sinogram's periodicity through appropriate boundary conditions and loss functions.
+While the total amount of missing data remains constant, the specific distribution of the missing affects the quality of the recovery. The model extrapolates the missing parts with the help of existing data, and when the sinogram contains an entire missing region, the model will infer the missing parts from farther away, which will lead to a decrease in the quality of recovery, as shown in the second and third rows of Figure~\ref{fig:pet_reconstruction_results}. However, when the missing and intact parts are interleaved, the quality of recovery improves because the model is able to extrapolate from a closer and thus more accurate location. 
+
+Additionally, we also found that attention mechanism is very important for the model to learn the relationship between different parts of the sinogram regardless of distances between them.
+Comparing the second and third rows of Figure~\ref{fig:pet_reconstruction_results}, we can observe different patterns of missing data. In the third row, the missing portions are primarily concentrated in the middle region of the sinogram, with relatively balanced data preserved in both the upper and lower sections. In contrast, the second row's missing data extends closer to the upper part of the sinogram, with only a narrow band of preserved data in the upper region.  
+So if the model can only capture short distance relationships, obviously the second row will be more difficult to recover than the third row because the model has to extrapolate the missing parts from farther away.
+However, the results from Table~\ref{tab:results} show that the PSNR and SSIM of the second row are actually quite similar to those of the third row. This indicates that the attention mechanism can help the model learn the relationship between different parts of the sinogram regardless of distances between them, which is very important for the model to leverage the existing data effectively to recover the missing parts.
+% However, theoretically, due to the rotational symmetry of PET scanners, just a angular shift of missing angles without changing the structure should be equivalent. The performance discrepancy likely stems from our algorithm not fully accounting for the periodic boundary conditions of sinograms. Future implementations could address this by either centralizing the missing segments or explicitly modeling the sinogram's periodicity through appropriate boundary conditions and loss functions.
 
 Our dataset with only adjacent slices can solve the memory usage problem when processing super-large sinogram tensors in a simple way. Instead of processing the whole tensor of the size $(182, 365, 1764)$ all as a time, we divided it into $R\times(D, 2D+1, R)$ tensors and process them sequentially. But we will lose the context for each slice. And by inputing five input channels per slice (the current slice, two spatial neighbors, and two temporal neighbors), we created a contextually sufficient representation and also lower memory costs. This approach  avoid memory limitations and also enhance reconstruction quality by considering correlated information from adjacent slices, showing an average increase of 1.24dB in PSNR and 0.052 in SSIM compared to single-slice processing.
 
