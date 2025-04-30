@@ -53,13 +53,13 @@
 %\usepackage{iopams}  
 \begin{document}
 
-\title{Two-stage algorithms for the restoration of incomplete-ring PET Images}
+\title{Two-stage deep learning framework for the restoration of incomplete-ring PET images}
 
 
 \author{Yeqi Fang$^1$ and Rong Zhou$^2$}
 \address{College of Physics, Sichuan University, Chengdu, 610065, China}
 \ead{$^1$fangyeqi@stu.scu.edu.cn}
-\ead{$^2$zhourong@scu.edu.cn}
+\ead{$^2$rongzhou15@163.com}
 
 \vspace{10pt}
 \begin{indented}
@@ -67,13 +67,8 @@
 \end{indented}
 
 \begin{abstract}
-Positron Emission Tomography (PET) is an important molecular imaging tool widely used in medicine. Traditional PET systems rely on complete detector rings for full angular coverage and reliable data collection. 
-However, incomplete-ring PET scanners have emerged in multiple contexts due to hardware failures, cost constraints, or specific clinical needs. Standard reconstruction algorithms often suffer from performance degradation with these systems because of reduced data completeness and geometric inconsistencies.
-% We present a two-stage deep-learning framework that restores high-quality images from data with about 50 \% missing coincidences—a level of data loss not previously addressed by learning-based methods.
-We present a two-stage deep-learning framework that, without incorporating any time-of-flight (TOF) information, restores high-quality images from data with about 50 \% missing coincidences—a level of data loss not previously tackled by learning-based methods.
-The pipeline operates in two stages: a projection-domain Attention U-Net first predicts the missing sections of the sinogram by leveraging spatial context from neighbouring axial slices, after which the completed data are reconstructed with OSEM algorithm and passed to a compact U-Net–diffusion module that removes residual artefacts while reinstating high-frequency detail.
-Decoupling gap-filling from image enhancement eliminates the instability typical of end-to-end generative methods and dispenses with hand-tuned regularisation.
-Using 206 brain volumes from a public dataset, the result shows that our model successfully preserves most anatomical structures and tracer distribution features with PSNR of 30.92 dB and SSIM of 0.9708. We also achieve higher inference speed, thus providing an effective solution for incomplete-ring PET imaging.
+Positron Emission Tomography (PET) is an important molecular imaging tool widely used in medicine. Traditional PET systems rely on complete detector rings for full angular coverage and reliable data collection. However, incomplete-ring PET scanners have emerged due to hardware failures, cost constraints, or specific clinical needs. Standard reconstruction algorithms often suffer from performance degradation with these systems because of reduced data completeness and geometric inconsistencies. We present a two-stage deep-learning framework that, without incorporating any time-of-flight (TOF) information, restores high-quality images from data with about 50\% missing coincidences—double the loss levels previously addressed by CNN-based methods. The pipeline operates in two stages: a projection-domain Attention U-Net first predicts the missing sections of the sinogram by leveraging spatial context from neighbouring slices, after which the completed data are reconstructed with OSEM algorithm and passed to a U-Net–diffusion module that removes residual artefacts while reinstating high-frequency detail. Using 206 brain volumes from a public dataset, the result shows that our model successfully preserves most anatomical structures and tracer distribution features with PSNR of 30.92 dB and SSIM of 0.9708. We also achieve higher inference speed, thus providing an effective solution for incomplete-ring PET imaging.
+
 
 
 \end{abstract}
@@ -130,15 +125,15 @@ In this work we introduce a two-stage deep-learning framework that restores high
 (1) we propose a five-channel slice-stacking strategy that fuses immediate spatial and axial neighbours in the sinogram, providing rich local context for projection restoration; 
 (2) missing‐angle gaps are reconstructed with an Attention U-Net specifically tuned for severe angular deficits, enabling the network to focus selectively on informative sinogram regions; 
 (3) the resulting OSEM images are passed to a lightweight residual-diffusion module that iteratively synthesises high-frequency details while suppressing artefacts, thereby decoupling data completion from perceptual refinement; 
-and (4) we establish the first systematic benchmark on 206 public brain volumes with half the coincidences removed, demonstrating that our pipeline achieves 30.9 dB / 0.97 SSIM in image space and runs in $<$ 2 s per slice on a single GPU—surpassing existing partial-ring methods without hand-tuned regularisation.
+and (4) we establish the first systematic benchmark on 206 public brain volumes with half the coincidences removed, demonstrating that our pipeline achieves 30.9 dB / 0.97 SSIM in image space and runs in $<$ 2 s per image on a single GPU—surpassing existing partial-ring methods without hand-tuned regularisation.
 
 % Our method emphasizes restoring the missing angular information in the sinogram, effectively suppressing streak artifacts, and preserving the fine structural details critical for accurate clinical diagnosis.
-\begin{figure}[htbp]
-	\centering
-	\includegraphics[scale=0.70]{./Images/graph.jpg}
-	\caption{Principles of Positron Emission Tomography (PET) imaging \cite{Neumaier}.}
-	\label{fig:graph}
-\end{figure}
+% \begin{figure}[htbp]
+% 	\centering
+% 	\includegraphics[scale=0.70]{./Images/graph.jpg}
+% 	\caption{Principles of Positron Emission Tomography (PET) imaging \cite{Neumaier}.}
+% 	\label{fig:graph}
+% \end{figure}
 
 % \subsection{Thesis Organization}
 The remainder of this thesis is organized as follows:
@@ -215,7 +210,7 @@ Incomplete ring configurations emerge from a clash between ideal physics and pra
 
 
 The consequences of missing detectors are profound. 
-LORs that would normally pass through the missing sections simply vanish from the dataset, creating angular sampling gaps. We will see a mess if we directly reconstruct the image out of incomplete sinogram, as shown in Figure~\ref{fig:pet_incomplete_reconstruction}.
+LORs that would normally pass through the missing sections simply vanish from the dataset, creating angular sampling gaps. The results collapse under data deficiency if we directly reconstruct the image out of incomplete sinogram, as shown in Figure~\ref{fig:pet_incomplete_reconstruction}.
 % This incomplete sampling fundamentally undermines classical reconstruction algorithms that assume uniform angular coverage. The resulting images suffer from streak artifacts, elevated noise levels, and—most concerning for clinical applications—quantitative inaccuracies in tracer uptake measurements. Regions depending heavily on the missing LORs show particularly severe degradation, potentially biasing critical clinical indices like standardized uptake values (SUVs) and compromising diagnostic accuracy. 
 % These effects are 
 
@@ -229,7 +224,7 @@ Early in our research, we attempted to use Transformer-based approaches for dire
 
 
 % This failure forced us to reconsider our entire approach. 
-From listmode to sinogram, and from sinogram to reconstruction, the information is constantly losing. So, rather than attempting direct image-domain recovery, we pivoted to a two-stage method—first converting listmode data to sinograms with missing sections, then applying specialized techniques to complete these sinograms before final reconstruction. This approach, while computationally more intensive, provided a more appliable way to solve the missing data problem by retaining as much information as possible from sinogram.
+From listmode to sinogram, and from sinogram to reconstruction, the information is constantly losing. So, rather than attempting direct image-domain recovery, we pivoted to a two-stage method—first converting listmode data to sinograms with missing sections, then applying specialized techniques to complete these sinograms before final reconstruction. This approach, while computationally more intensive, provided a more applicable way to solve the missing data problem by retaining as much information as possible from sinogram.
 For simulation purposes, we mapped a $80\times128\times128$ voxel grid to physical space, yielding in-plane voxel dimensions of approximately 2.78 mm.
 
 % \begin{equation}
@@ -510,13 +505,13 @@ Training efficiency is enhanced through mixed precision computation and gradient
 \subsection{Image Refinement Based on U-Net and Diffusion Model}
 \label{sec:diffusion_model}
 Then, to further improve the image quality in geometry space, we have the second stage of our framework, which is a dual-model architecture that combines U-Net and diffusion model. The U-Net model is used to generate a coarse prediction of the image, while the diffusion model is used to refine the image by reconstructing the residual signal. This two-stage approach effectively balances reconstruction quality with computational efficiency.
-And they also use an auxiliary guidance strategy and a contrastive diffusion strategy to improve the reconstruction quality. The auxiliary guidance strategy uses neighboring axial slices and spectral information to provide additional context for the reconstruction, while the contrastive diffusion strategy ensures that the model produces anatomically plausible reconstructions specific to each individual scan. 
 Here we adopt almost the same architecture as that used in Ref. \cite{han2023} except some tweaks of the hyperparameters for the training
+And they also use an auxiliary guidance strategy and a contrastive diffusion strategy to improve the reconstruction quality. The auxiliary guidance strategy uses neighboring axial slices and spectral information to provide additional context for the reconstruction, while the contrastive diffusion strategy ensures that the model produces anatomically plausible reconstructions specific to each individual scan. 
 And we train the model using a combination of L1 loss and contrastive loss without pretrained weights. 
 
 \subsection{Evaluation Metrics}
 
-To comprehensively evaluate the performance of the reconstruction results of both sinogram and its reconstructed images, we uses several quantitative metrics. These metrics measure the similarity between reconstructed images and ground truth images from different perspectives, including pixel-level accuracy, structural fidelity, and preservation of clinically relevant features.
+To comprehensively evaluate the performance of the reconstruction results of both sinogram and its reconstructed images, we use several quantitative metrics. These metrics measure the similarity between reconstructed images and ground truth images from different perspectives, including pixel-level accuracy, structural fidelity, and preservation of clinically relevant features.
 
 % \subsubsection{Peak Signal-to-Noise Ratio (PSNR)}
 
@@ -687,7 +682,7 @@ Therefore, for our current dataset size, convolutional architectures remains ben
 \section{Acknowledgments}
 I would like to express my sincere gratitude to senior students, Xiaoyu Chen for insightful discussions and suggestions.
 The conclusions and analyses presented in this publication were produced using the following software: Python (Guido van Rossum 1986) \cite{10.5555/1593511}, Opencv (Intel, Willow Garage, Itseez) \cite{itseez2015opencv}, Scipy (Jones et al. 2001) \cite{2020SciPy-NMeth}, PyTorch  (Meta AI September 2016) \cite{NEURIPS2019_9015}, Matplotlib (Hunter 2007) \cite{Hunter:2007} and Seaborn \cite{Waskom2021}.
-
+The dataset for this study can be found in \url{https://github.com/Show-han/PET-Reconstruction.git}.
 \appendix
 
 \section{Parameters of models}
