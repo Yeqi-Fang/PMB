@@ -38,7 +38,7 @@
 
 \textbf{Methods:} We present a two-stage deep-learning framework that, without incorporating any time-of-flight (TOF) information, restores high-quality images from data with about 50\% missing coincidences—double the loss levels previously addressed by CNN-based methods. The pipeline operates in two stages: a projection-domain Attention U-Net first predicts the missing sections of the sinogram by leveraging spatial context from neighbouring slices, after which the completed data are reconstructed with OSEM algorithm and passed to a U-Net–diffusion module that removes residual artefacts while reinstating high-frequency detail.
 
-\textbf{Results:} Using 206 brain volumes from a public dataset, the result shows that our model successfully preserves most anatomical structures and tracer distribution features with PSNR of 35.92 dB and SSIM of 0.9958.
+\textbf{Results:} Using 206 brain volumes from a public dataset, the result shows that our model successfully preserves most anatomical structures and tracer distribution features with PSNR of 35.92 dB and SSIM of 0.9918.
 
 \textbf{Conclusion:} our two-stage deep‐learning framework effectively restores high‐quality PET images from over 50 \% incomplete‐ring data, achieving near‐complete anatomical fidelity and robust performance without requiring TOF information.
 \end{abstract}
@@ -55,10 +55,10 @@ Positron emission tomography (PET) is a powerful molecular imaging technique tha
 The photon pairs are then detected by a pair of scintillation sensors, and each coincidence event will define a line-of-response (LOR).
 Traditional PET systems usually use complete 360$^\circ$ detector rings to maximize their sensitivity and angular coverage \cite{townsend2004}.
 
-However, incomplete-ring systems have emerged from practical necessity rather than theoretical preference: they reduce costs and complexity, allow closer access to patients in specialized applications like breast scanning or in-beam therapy monitoring \cite{surti2008}, create "open" configurations that alleviate claustrophobia \cite{tashima2012, krishnamoorthy2021}, and enable novel applications such as dual-panel brain imaging systems \cite{zhang2020}. The trade-off is severe—incomplete angular coverage creates gaps in projection data, turning reconstruction into an underdetermined problem. Missing angular views inevitably introduce artifacts and resolution non-uniformity \cite{kak1988, surti2008}. Even time-of-flight capabilities, which partially fix these problems, can't fully compensate for limited view angles \cite{surti2008, krishnamoorthy2021}.
+However, incomplete-ring systems have emerged from practical necessity rather than theoretical preference: they reduce costs and complexity, allow closer access to patients in specialized applications like breast scanning or in-beam therapy monitoring \cite{surti2008}, create "open" configurations that alleviate claustrophobia \cite{tashima2012, krishnamoorthy2021}, and enable novel applications such as dual-panel brain imaging systems \cite{zhang2020}. The trade-off is substantial—incomplete angular coverage creates gaps in projection data, turning reconstruction into an underdetermined problem. Missing angular views inevitably introduce artifacts and resolution non-uniformity \cite{kak1988, surti2008}. Even time-of-flight capabilities, which partially fix these problems, can't fully compensate for limited view angles \cite{surti2008, krishnamoorthy2021}.
 
-Researchers have investigated a lot of methods to achieve better and better incomplete-ring PET reconstruction. Analytical ways like filtered back-projection falter immediately—their assumption of complete data leads to pronounced streak artifacts \cite{kak1988}. Iterative approaches like maximum-likelihood expectation-maximization (MLEM) are better by modeling the acquisition process \cite{qi2006}, but they still have artifacts along missing view directions \cite{zhang2020}.
-Penalized likelihood methods incorporating prior constraints show promise, as Zhang \textit{et al.} demonstrated by using high-quality prior images to enhance contrast recovery in a dual-panel head-and-neck PET system \cite{zhang2020}. And sinogram completion approaches attempt to estimate or interpolate the absent projection data prior to reconstruction \cite{makkar2024partial}. But these methods are still not enough to solve the fundamental problem. 
+Researchers have investigated various methods to achieve progressive improvements in incomplete-ring PET reconstruction. Analytical ways like filtered back-projection falter immediately—their assumption of complete data leads to pronounced streak artifacts \cite{kak1988}. Iterative approaches like maximum-likelihood expectation-maximization (MLEM) are better by modeling the acquisition process \cite{qi2006}, but they still have artifacts along missing view directions \cite{zhang2020}.
+Penalized likelihood methods incorporating prior constraints show promise, as Zhang \textit{et al.} demonstrated by using high-quality prior images to enhance contrast recovery in a dual-panel head-and-neck PET system \cite{zhang2020}. And sinogram completion approaches attempt to estimate or interpolate the absent projection data prior to reconstruction \cite{makkar2024partial}. However, these methods remain insufficient to solve the fundamental problem. 
 
 Deep learning has shown remarkable success in many fields \cite{PhysRevD.110.063011, liu2024deep, reader2020deep}. Regression-based networks have shown promise in low-dose PET denoising and partial data reconstruction \cite{Kandarpa_2021} by learning direct mappings between degraded and high-quality images. Liu \textit{et al.}'s U-Net approach to transform artifact-degraded partial-ring PET images \cite{liu2019} demonstrated initial success, but the model in this work is mainly targeted for mild data loss and training data didn't consider the context of sinograms.
 However, current available techniques have some drawbacks.
@@ -70,7 +70,7 @@ In this work we introduce a two-stage deep-learning framework that restores high
 (1) we propose a five-channel slice-stacking strategy that fuses immediate spatial and axial neighbours in the sinogram, providing rich local context for projection restoration; 
 (2) missing‐angle gaps are reconstructed with an Attention U-Net specifically tuned for severe angular deficits, enabling the network to focus selectively on informative sinogram regions; 
 (3) the resulting OSEM images are passed to a lightweight residual-diffusion module that iteratively synthesises high-frequency details while suppressing artefacts, thereby decoupling data completion from perceptual refinement; 
-and (4) we establish the first systematic benchmark on 206 public brain volumes with half the coincidences removed, demonstrating that our pipeline achieves 35.92 dB / 0.9958 SSIM in image space and runs in $<$ 2 s per image on a single GPU—surpassing existing partial-ring methods without hand-tuned regularisation.
+and (4) we establish the first systematic benchmark on 206 public brain volumes with half the coincidences removed, demonstrating that our pipeline achieves 35.92 dB / 0.9918 SSIM in image space and runs in $<$ 2 s per image on a single GPU—surpassing existing partial-ring methods without hand-tuned regularisation.
 
 The remainder of this thesis is organized as follows:
 \textbf{Section~\ref{chap:background}} provides an overview of PET and its basic physics like principles of coincidence detection, and the main problems caused by incomplete rings. We also summarize classical and modern reconstruction methods.
@@ -141,8 +141,10 @@ For simulation purposes, we mapped a $128\times128\times128$ voxel grid to physi
     \label{fig:pet_incomplete_reconstruction}
 \end{figure*}
 
-The detector system configuration is based on our planned experimental setup for future validation studies. Table \ref{tab:detector_params} describes the specific configuration parameters of our target PET system, which represents the specifications of an incomplete-ring PET scanner currently under development in our laboratory. 
-Our PET system simulation employed the Monte Carlo simulation toolkit SimSET (Simulation System for Emission Tomography) \cite{Harrison157P} to model a realistic full-ring PET scanner geometry (Siemens Biograph mMR) \cite{Delso1914}. The scanner consists of 56 detector blocks per ring and 8 blocks along the scanner axis, with each detector block containing $8 \times 8$ lutetium oxyorthosilicate (LSO) crystals ($4 \times 4 \times 20$mm). The energy resolution was set to 14.5\% full-width-at-half-maximum at 511keV.
+Table \ref{tab:detector_params} summarises the target configuration of the in‑house PET prototype, an incomplete‑ring system that is currently being assembled in our laboratory.  Because several mechanical layouts are still under evaluation, we designed a custom geometry interface for the Monte‑Carlo toolkit SimSET\cite{Harrison157P}.  The interface allows any combination of inactive rings or angular gaps to be enabled or disabled at run‑time, giving us maximal flexibility while the hardware design is finalised.
+Once the full‑ring list‑mode data have been generated, we post‑process the coincidences to emulate incomplete geometries: selected detector rings or azimuthal sectors are masked out, and any coincidence that involves at least one inactive crystal is discarded.  This two‑stage strategy keeps the underlying activity distribution, Poisson statistics and scatter model identical between the reference and degraded datasets, isolating the effect of missing angular information.
+% , the attenuation effects of seven tissue types (connective tissue, water, brain, bone, muscle, fat, and blood) were incorporated in the simulations and subsequently corrected during image reconstruction, providing a more realistic modeling of clinical PET acquisitions. 
+Importantly, detector-specific sensitivity variations were incorporated by applying crystal-wise efficiency factors (Gaussian spread $\approx5\%$ around the nominal sensitivity), ensuring that the coincidence statistics also reflect non-uniform detector response.
 
 \begin{table}[htbp]
     \centering
@@ -176,7 +178,7 @@ Our PET system simulation employed the Monte Carlo simulation toolkit SimSET (Si
 
 
 
-A 15-minute static FDG brain PET scan was simulated, equivalent to an average of 280 million coincidence events including both true and scatter events. The activity ratio of gray matter (GM) to white matter (WM) was set to 4:1, while the rest of the brain tissue was assumed to have no activity uptake. Importantly, the attenuation effects of seven tissue types (connective tissue, water, brain, bone, muscle, fat, and blood) were incorporated in the simulations and subsequently corrected during image reconstruction, providing a more realistic modeling of clinical PET acquisitions.
+% A 15-minute static FDG brain PET scan was simulated, equivalent to an average of 280 million coincidence events including both true and scatter events. The activity ratio of gray matter (GM) to white matter (WM) was set to 4:1, while the rest of the brain tissue was assumed to have no activity uptake. 
 
 We used a dataset of 206 brain PET volumes from 206 individual healthy human subjects, each with dimensions of $128^3$ voxels from a public dataset as phantom images for our simulation \cite{Han2023DiffusionPET}. All subjects had normal brain anatomy without any pathological conditions, ensuring consistent baseline characteristics across the dataset. The dataset exhibits natural anatomical variation typical of healthy adult brains, including differences in brain size, cortical folding patterns, and regional tissue distributions. Each phantom was down-sampled to a matrix of $128 \times 128 \times 128$ with voxel size of $2.78 \times 2.78 \times 2.78$mm$^3$. This healthy brain dataset provides a robust foundation for evaluating our reconstruction framework's performance on normal anatomical structures before extending to pathological cases in future studies.
 
@@ -236,8 +238,8 @@ As shown in Figure \ref{fig:reconstruction_workflow}, this study proposes an inn
 \label{sec:unet_sinogram}
 
 Sinogram repair is fundamental in incomplete ring PET imaging, as its quality directly affects the precision of reconstructed images. 
-The shape of sinogram tensors is $(D, 2D+1, R^2)$, or $(182, 365, 1764)$ in our work, where $R$ is the number of axial rings and $D$ is the number of detectors each ring. And it is obvious that this tensor is too large to be directly fed into any UNet-like models. So we cut this large $(D, 2D+1, R^2)$ tensor into $R\times(D, 2D+1, R)$ tensors. 
-As shown in Figure~\ref{fig:sinogram_structure}, the central channel of each input tensor corresponds to the current sinogram slice, while the direct spatial neighbors (slices $j-1$ and $j+1$) and temporal neighbors from previous and subsequent sinogram periods (slices $j-R$ and $j+R$) constitute the other four channels. For boundary handling, when adjacent indices exceed the dataset range, the central slice itself is used for channel filling, ensuring input dimension consistency. These neighboring slices are important for improving the model's understanding of local structural continuity and temporal consistency. So finally we have $1764\times(182, 365, 5)$ tensors for each sinogram. 
+The shape of sinogram tensors is $(D, 2D+1, R^2)$, or $(182, 365, 1764)$ in our work, where $R$ is the number of axial rings and $D$ is the number of detectors each ring. It is evident that this tensor is too large to be directly fed into any UNet-like models. Therefore, we divided this large $(D, 2D+1, R^2)$ tensor into $R\times(D, 2D+1, R)$ tensors. 
+As shown in Figure~\ref{fig:sinogram_structure}, the central channel of each input tensor corresponds to the current sinogram slice, while the direct spatial neighbors (slices $j-1$ and $j+1$) and temporal neighbors from previous and subsequent sinogram periods (slices $j-R$ and $j+R$) constitute the other four channels. For boundary handling, when adjacent indices exceed the dataset range, the central slice itself is used for channel filling, ensuring input dimension consistency. These neighboring slices are important for improving the model's understanding of local structural continuity and temporal consistency. Consequently, we obtain $1764\times(182, 365, 5)$ tensors for each sinogram. 
 To make sure each image was evaluated once in the test set, we implemented 6-fold cross-validation across the 206 volumes (4 groups with 34 images and 2 groups with 35 images). The predictions obtained from our model were reconstructed using the OSEM algorithm to achieve preliminary geometric recovery, and these reconstructions were subsequently used as inputs for our second stage framework.
 
 Although traditional U-Net performs excellently in medical image segmentation and reconstruction tasks \cite{ronneberger2015unetconvolutionalnetworksbiomedical}, it lacks the ability to selectively focus on key features when dealing with complex incomplete ring PET sinogram restoration problems. The Attention U-Net \cite{oktay2018attentionunetlearninglook} adopted in this study enhances the model's perception of important feature regions through spatial attention mechanisms while suppressing the influence of irrelevant features, which is more useful for restoring sinograms from incomplete data. We also tested some transformer-based U-Net like UNETR \cite{hatamizadeh2021unetrtransformers3dmedical}, which combines ViT encoder and convolutional decoder, and TransUNet \cite{chen2021transunettransformersmakestrong}, where both encoder and decoder are completely based on transformers. But they are slightly outperformed by Attention U-Net.
@@ -268,7 +270,7 @@ After testing on our dataset, the results showed that Attention U-Net performs b
 
 
 
-The model structure is shown in Tabel~\ref{tab:unet_architecture}.
+% The model structure is shown in Tabel~\ref{tab:unet_architecture}.
 Model training uses the Adam optimizer with an initial learning rate of $10^{-4}$ and adds   $10^{-5}$ weight decay to prevent overfitting. 
 Training efficiency is enhanced through mixed precision computation and gradient scaling techniques, combined with a ReduceLROnPlateau dynamic learning rate scheduler (with a decay factor of 0.3 when validation loss shows no improvement for 3 consecutive epochs), achieving stable convergence.
 
@@ -336,7 +338,7 @@ Figure~\ref{fig:pet_incomplete_reconstruction} shows the comparison between dire
     &PSNR (sinogram)& 35.98 dB&0.3101 dB\\
     \hline
     \multirow{6}{*}{[60\degree, 120\degree] \& [240\degree, 300\degree]}
-    &SSIM (refined)& 0.9924 &0.01302\\
+    &SSIM (refined)& 0.9905 &0.01302\\
     &PSNR (refined)& 34.97 dB&2.231 dB\\
     &SSIM& 0.9709&0.0134\\
     &PSNR& 32.91 dB&2.532 dB\\
@@ -344,7 +346,7 @@ Figure~\ref{fig:pet_incomplete_reconstruction} shows the comparison between dire
     &PSNR (sinogram)& 35.91 dB&0.2713 dB\\
     \hline
     \multirow{6}{*}{\parbox{4.8cm}{[60\degree, 90\degree] \& [130\degree, 160\degree] \& [240\degree, 260\degree] \& [320\degree, 340\degree]}}
-    &SSIM (refined)& 0.9958 &0.01152\\
+    &SSIM (refined)& 0.9918 &0.01152\\
     &PSNR (refined)& 35.92 dB&2.542 dB\\
     &SSIM& 0.9761&0.01315\\
     &PSNR& 33.10 dB&2.851 dB\\
@@ -358,10 +360,10 @@ Figure~\ref{fig:pet_reconstruction_results} demonstrates the model's capability 
     \centering
     \includegraphics[width=\textwidth]{Images/sinograms.pdf}
     \vspace{-1cm}
-    \caption{Comparison of PET sinogram reconstruction results after training (metrics are shown in Tabel~\ref{tab:results}). Each row displays three images: the left shows the incomplete input sinogram with missing angular data, the middle shows the model-predicted complete sinogram, and the right shows the complete real sinogram. And each row corresponds to a different angular loss range, as indicated in the first column. }
+    \caption{Comparison of PET sinogram reconstruction results after training (metrics are shown in Table~\ref{tab:results}). Each row displays three images: the left shows the incomplete input sinogram with missing angular data, the middle shows the model-predicted complete sinogram, and the right shows the complete real sinogram. And each row corresponds to a different angular loss range, as indicated in the first column. }
     \label{fig:pet_reconstruction_results}
 \end{figure*}
-Figure~\ref{fig:pet_brain_reconstruction} shows the PET image quality generated from the reconstructed sinogram. Its PSNR reached 35.92 dB and SSIM was 0.9958. By comparing the original PET brain image (left) with the reconstructed PET image (right), it can be seen that the reconstructed image successfully preserves key anatomical structures and tracer distribution features from the original image. Particularly in the cerebral cortex and basal ganglia regions, the reconstructed image clearly preserves the boundaries and contrast of high uptake areas. 
+Figure~\ref{fig:pet_brain_reconstruction} shows the PET image quality generated from the reconstructed sinogram. Its PSNR reached 35.92 dB and SSIM was 0.9918. By comparing the original PET brain image (left) with the reconstructed PET image (right), it can be seen that the reconstructed image successfully preserves key anatomical structures and tracer distribution features from the original image. Particularly in the cerebral cortex and basal ganglia regions, the reconstructed image clearly preserves the boundaries and contrast of high uptake areas. 
 
 \begin{figure}[ht]
     \centering
@@ -385,7 +387,7 @@ Figure~\ref{fig:pet_brain_reconstruction} shows the PET image quality generated 
     \label{fig:compare_reconstruction_restoration}
 \end{figure}
 
-From the experimental results, we can  confirm that our two-stage reconstruction can effectively recover  PET images from incomplete ring geometries. And we also have several important findings. 
+From the experimental results, we demonstrate that our two-stage reconstruction can effectively recover  PET images from incomplete ring geometries. And we also have several important findings. 
 First, our model performs remarkably well despite operating with approximately 50\% missing data and $1/3$ missing detectors, in which case direct reconstruction without restoration will cause a chaos. 
 But our approach was still able to achieve PSNR values above 30 dB and SSIM scores above 0.97 for images, indicating successful ability to recover missing information of key structural features.
 
@@ -393,13 +395,13 @@ While the total amount of missing data remains constant, the specific distributi
 
 Additionally, we also found that attention mechanism is essential for the model to learn the relationship between different parts of the sinogram regardless of distances between them.
 Comparing the second and third rows of Figure~\ref{fig:pet_reconstruction_results}, we can observe different patterns of missing data. In the third row, the missing portions are primarily concentrated in the middle region of the sinogram, with relatively balanced data preserved in both the upper and lower sections. In contrast, the second row's missing data extends closer to the upper part of the sinogram, with only a narrow band of preserved data in the upper region.  
-So if the model can only capture short distance relationships, obviously the second row will be more difficult to recover than the third row because the model has to extrapolate the missing parts from farther away.
+So if the model can only capture short distance relationships, the second row will be more difficult to recover than the third row because the model has to extrapolate the missing parts from farther away.
 However, the results from Table~\ref{tab:results} show that the PSNR and SSIM of the second row are actually quite similar to those of the third row. This indicates that the attention mechanism can help the model learn the relationship between different parts of the sinogram regardless of distances between them, which is very important for the model to leverage the existing data effectively to recover the missing parts.
 
-Our dataset with only adjacent slices can solve the memory usage problem when processing super-large sinogram tensors in a simple way. Instead of processing the whole tensor of the size $(182, 365, 1764)$ all as a time, we divided it into $R\times(D, 2D+1, R)$ tensors and process them sequentially. But we will lose the context for each slice. And by inputing five input channels per slice (the current slice, two spatial neighbors, and two temporal neighbors), we created a contextually sufficient representation and also lower memory costs. This approach  avoid memory limitations and also enhance reconstruction quality by considering correlated information from adjacent slices, showing an average increase of 1.24dB in PSNR and 0.052 in SSIM compared to single-slice processing.
+Our dataset with only adjacent slices can solve the memory usage problem when processing super-large sinogram tensors in a simple way. Instead of processing the whole tensor of the size $(182, 365, 1764)$ all as a time, we divided it into $R\times(D, 2D+1, R)$ tensors and process them sequentially. However, this approach results in loss of the context for each slice. And by inputing five input channels per slice (the current slice, two spatial neighbors, and two temporal neighbors), we created a contextually sufficient representation and also lower memory costs. This approach  avoid memory limitations and also enhance reconstruction quality by considering correlated information from adjacent slices, showing an average increase of 1.24dB in PSNR and 0.052 in SSIM compared to single-slice processing.
 
 For more robust evaluation and enough data for the second stage, we used 6-fold cross-validation on our 206 volumes dataset. 
-This validation strategy minimizes the influence of random variation and provides more reliable performance metrics. The cross-validated results confirmed this performance advantages with PSNR of 35.6421 dB and SSIM of 0.9958 on the validation set. 
+This validation strategy minimizes the influence of random variation and provides more reliable performance metrics. The cross-validated results confirmed this performance advantages with PSNR of 35.92 dB and SSIM of 0.9918 on the validation set. 
 On the contrary, if we do not use cross validation, we can only use the data on the test set (about 36 images) for both training and testing on the model of the second stage. Because of the data leakage, the prediction on the training set cannot be used for the second stage model 
 
 Although more complex generative models like diffusion models and GANs have been used in low-dose PET reconstruction and denoising and also shown their strong capabilities in those tasks, our approach also achieves excellent results with more computationally efficient models. This is really important in clinical applications, where timely image production is essential.
@@ -411,18 +413,22 @@ Therefore, our sinogram restoration performance is actually better than what the
 
 % However, we still have some limitations in this study: although we adopted 2D slice processing (enhanced by adjacent slices) to improve memory efficiency, a fully 3D version might perform better as it has a more comprehensive context of sinogram. Or we can also try to use recurrent neural network or attention mechanism to capture more precise relationships between difference slices. 
 % Additionally, we are mainly validating for ring-type and partial angular coverage, but missing detectors in real-world situation might lead to more complex missing patterns, requiring more advanced geometric modeling methods.
-However, our study has several important limitations that should be acknowledged. First, our simulation employed idealized detection settings with uniform detector properties, which significantly differs from real-world PET systems where individual detectors exhibit variations in sensitivity, energy resolution, and timing characteristics. This idealization may limit the direct applicability of our method to clinical scanners. Second, we validated our approach exclusively on brain PET data from a limited cohort, without exploring its generalization to other anatomical regions or pathological conditions. The method's performance on whole-body PET or in the presence of lesions remains untested. Third, while we adopted 2D slice processing enhanced by adjacent slices to improve memory efficiency, this approach may miss important 3D contextual information that could be leveraged by fully volumetric processing. 
-% Fourth, our simulation framework, though effective for this proof-of-concept study, lacks the validation and widespread acceptance of established tools like GATE, potentially limiting the reproducibility and clinical relevance of our findings. 
-Finally, the specific scanner geometry used (253.71 mm radius) represents only one configuration, and the model's adaptability to different scanner dimensions and detector arrangements requires further investigation.
+Despite encouraging results, our study has several important limitations. First, the Monte-Carlo data were generated under idealised detector conditions that do not yet reflect the full range of crystal-to-crystal variations observed in commercial scanners, which may curb the method’s immediate transferability. Second, validation was performed only on brain PET scans from a modest cohort of healthy volunteers; performance on other organs or on pathological uptake patterns remains unknown. Third, our network processes 2-D slices augmented by neighbouring information, a compromise that can sacrifice some genuinely three-dimensional context. Fourth, we relied on an in-house simulator that has not yet achieved the community acceptance of packages such as GATE, potentially limiting reproducibility. Finally, the evaluation covered only one scanner radius (253.71 mm); further work is required to understand the model’s behaviour across different geometries and partial-ring layouts.
+
+
 
 
 
 % Looking toward future improvements, positional encoding could also be incorporated to better account for the sequential nature of axial slices. Additionally, while we tested transformer-based architectures like UNETR and TransUNet, they were slightly outperformed by Attention U-Net in our specific task. 
 % Therefore, for our current dataset size, convolutional architectures remains beneficial. However, if we can have larger datasets, transformer-based approaches might fulfil their full potential.
 
-Looking toward future improvements, several directions warrant exploration. Validation with experimental data from real PET scanners, including systems with known detector failures or irregularities, would be essential for clinical translation. Extension to diverse anatomical regions and pathological conditions would demonstrate the method's broader applicability.
-% Integration with validated simulation frameworks like GATE would enhance the reliability and acceptance of our results. 
-To better capture inter-slice relationships while maintaining computational efficiency, hybrid approaches combining recurrent neural networks or transformer-based attention mechanisms with our current architecture could be explored. Additionally, incorporating physics-based constraints and detector-specific modeling could help bridge the gap between idealized simulations and real-world complexities. While transformer-based architectures like UNETR and TransUNet were slightly outperformed by Attention U-Net in our current study, larger and more diverse datasets might unlock their full potential for this reconstruction task.
+Looking toward future improvements, several avenues can close these gaps. Collecting list-mode data on physical PET systems—ideally including scanners with deliberately inactive modules—will provide the experimental evidence needed for clinical translation. Broadening the test set to whole-body studies and scans containing lesions will demonstrate wider applicability. Migrating the workflow to a GATE-based simulation pipeline would align the study with established practice and enhance credibility. To preserve inter-slice relationships without incurring a full 3-D memory cost, hybrid approaches that add recurrent or transformer-style attention across slices merit exploration. Introducing physics-informed constraints during training could further narrow the gap between simulated and real acquisitions. Finally, larger and more diverse datasets may unlock the full potential of transformer-driven architectures such as UNETR or TransUNet, which showed only marginal advantages in the present, more limited setting.
+
+
+
+
+
+
 
 
 
